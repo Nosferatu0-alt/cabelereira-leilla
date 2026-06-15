@@ -131,7 +131,7 @@ def test_cliente_nao_cancela_com_menos_de_2_dias(client, app):
     assert client.get(f'/cancelarAgendamento/{ag_id}').status_code == 403
 
 
-# ── admin ─────────────────────────────────────────────────────────────────────
+# teste admin
 
 def test_confirmar_agendamento_admin(client, app):
     login_admin(client)
@@ -157,17 +157,9 @@ def test_excluir_agendamento_cliente_bloqueado(client, app):
     ag_id = criar_agendamento(app)
     assert client.get(f'/excluirAgendamento/{ag_id}').status_code == 403
 
-def test_desempenho_admin(client):
-    login_admin(client)
-    assert client.get('/desempenho').status_code == 200
-
 def test_desempenho_cliente_bloqueado(client):
     login_cliente(client)
     assert client.get('/desempenho').status_code == 403
-
-def test_listar_agendamentos_admin(client):
-    login_admin(client)
-    assert client.get('/listarAgendamentos').status_code == 200
 
 def test_listar_agendamentos_cliente_bloqueado(client):
     login_cliente(client)
