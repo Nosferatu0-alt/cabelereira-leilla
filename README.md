@@ -1,4 +1,4 @@
-# Cabeleira Leila - Sistema de Agendamento
+# Cabeleireira Leila - Sistema de Agendamento
 
 Sistema web para gerenciamento de agendamentos de um salão de beleza, desenvolvido com Flask.
 
@@ -7,26 +7,27 @@ Sistema web para gerenciamento de agendamentos de um salão de beleza, desenvolv
 ## Funcionalidades
 
 ### Cliente
-- Cadastro e login de clientes
-- Agendamento de serviços
-- Edição e cancelamento de agendamentos (até 2 dias antes)
-- Sugestão de unificação de agendamentos na mesma semana
+- Cadastro e login de clientes;
+- Agendamento de serviços;
+- Edição e cancelamento de agendamentos (até 2 dias antes da data marcada);
+- Sugestão de unificação de agendamentos na mesma semana.
 
 ### Operacional (Administrador)
-- Listagem de todos os agendamentos
-- Alteração de agendamentos de qualquer cliente
-- Confirmação de agendamentos
-- Gerenciamento de status (pendente, finalizado, cancelado)
-- Cancelamento e exclusão de agendamentos
+- Listagem de todos os agendamentos;
+- Alteração de agendamentos de qualquer cliente;
+- Confirmação de agendamentos;
+- Gerenciamento de status (`Pendente`, `Finalizado` e `Cancelado`);
+- Cancelamento e exclusão de agendamentos.
 
 ### Gerencial (Administrador)
-- Dashboard com visão geral dos agendamentos
-- Acompanhamento por cliente
-- Desempenho semanal das últimas 4 semanas
+- Dashboard com visão geral dos agendamentos;
+- Acompanhamento por cliente;
+- Desempenho semanal das últimas quatro semanas.
 
 ---
 
-## Tecnologias
+## Tecnologias Utilizadas
+
 - Python 3.13
 - Flask 3.1.0
 - Flask-Login 0.6.3
@@ -37,82 +38,98 @@ Sistema web para gerenciamento de agendamentos de um salão de beleza, desenvolv
 
 ---
 
-## Como rodar o projeto
+## Como Executar o Projeto
 
-**1. Clone o repositório**
-\`\`\`bash
+### 1. Clone o repositório
+
+```bash
 git clone https://github.com/seu-usuario/cabelereira-leila.git
 cd cabelereira-leila
-\`\`\`
+```
 
-**2. Crie e ative o ambiente virtual**
-\`\`\`bash
+### 2. Crie e ative o ambiente virtual
+
+```bash
 python -m venv venv
-# Windows
+```
+
+#### Windows
+
+```bash
 venv\Scripts\activate
-# Linux/Mac
+```
+
+#### Linux/Mac
+
+```bash
 source venv/bin/activate
-\`\`\`
+```
 
-**3. Instale as dependências**
-\`\`\`bash
+### 3. Instale as dependências
+
+```bash
 pip install -r requirements.txt
-\`\`\`
+```
 
-**4. Rode o sistema**
-\`\`\`bash
+### 4. Execute a aplicação
+
+```bash
 python app.py
-\`\`\`
+```
 
-As tabelas do banco de dados são criadas automaticamente na primeira execução, junto com o usuário administrador e os serviços padrão.
+As tabelas do banco de dados são criadas automaticamente na primeira execução, juntamente com o usuário administrador e os serviços padrão.
 
-**5. Acesse no navegador**
-\`\`\`
+### 5. Acesse o sistema
+
+```text
 http://127.0.0.1:5000
-\`\`\`
+```
 
 ---
 
 ## Testes
 
-**1. Instale as dependências de teste**
-\`\`\`bash
-pip install pytest pytest-flask
-\`\`\`
+### Instalar as dependências de teste
 
-**2. Rode todos os testes**
-\`\`\`bash
+```bash
+pip install pytest pytest-flask pytest-cov
+```
+
+### Executar todos os testes
+
+```bash
 pytest tests.py
-\`\`\`
+```
 
-**3. Rode com detalhes (verbose)**
-\`\`\`bash
+### Executar os testes em modo detalhado
+
+```bash
 pytest tests.py -v
-\`\`\`
+```
 
-**4. Rode com cobertura de código**
-\`\`\`bash
-pip install pytest-cov
+### Gerar relatório de cobertura
+
+```bash
 pytest tests.py --cov=app --cov-report=term-missing
-\`\`\`
+```
 
-O banco usado nos testes é em memória (SQLite), separado do banco de desenvolvimento.
+Os testes utilizam um banco de dados SQLite em memória, separado do ambiente de desenvolvimento.
 
 ---
 
-## Acesso Administrador (padrão)
+## Acesso do Administrador
 
 | Campo | Valor |
-|-------|-------|
-| Email | cabelereiraLeila@adm.com |
+|--------|--------|
+| E-mail | cabelereiraLeila@adm.com |
 | Senha | admin123 |
 
 ---
 
 ## Estrutura do Projeto
 
-\`\`\`
-cabelereira-leilla/
+```text
+cabelereira-leila/
 ├── app.py
 ├── models.py
 ├── db.py
@@ -127,17 +144,19 @@ cabelereira-leilla/
     ├── gerencial/
     │   └── desempenho.html
     └── operacional/
-\`\`\`
+```
 
 ---
 
-## Serviços cadastrados por padrão
+## Serviços Cadastrados por Padrão
 
 | Serviço | Preço |
-|---------|-------|
+|----------|--------|
 | Corte de Cabelo | R$ 50,00 |
 | Manicure | R$ 30,00 |
 | Pedicure | R$ 40,00 |
 | Escova | R$ 60,00 |
 | Design de Sobrancelhas | R$ 20,00 |
 | Maquiagem | R$ 80,00 |
+
+---
