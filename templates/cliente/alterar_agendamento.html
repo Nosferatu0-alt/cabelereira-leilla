@@ -1,0 +1,235 @@
+```html
+{% extends 'base.html' %}
+{% block title %}Alterar Agendamento{% endblock %}
+
+{% block content %}
+
+<style>
+.page-title{
+    color:#c0166e;
+    font-weight:700;
+}
+
+.custom-card{
+    border:none;
+    border-radius:24px;
+    overflow:hidden;
+    box-shadow:0 12px 30px rgba(0,0,0,.08);
+}
+
+.card-header-gradient{
+    background:linear-gradient(135deg,#c0166e,#e91e8c);
+}
+
+.service-box{
+    background:#fdf5fa;
+    border:1px solid #f1d7e5;
+    border-radius:15px;
+    padding:14px 18px;
+    margin-bottom:12px;
+    transition:.2s;
+}
+
+.service-box:hover{
+    background:#fff;
+    border-color:#e91e8c;
+    transform:translateY(-2px);
+}
+
+.btn-action{
+    border-radius:14px;
+    padding:14px;
+    font-weight:600;
+}
+
+.form-control,
+.form-select{
+    border-radius:12px;
+    padding:12px;
+}
+
+.info-box{
+    background:#fff7fb;
+    border-left:4px solid #e91e8c;
+    border-radius:12px;
+    padding:15px;
+    margin-bottom:25px;
+}
+</style>
+
+<div class="row justify-content-center">
+
+    <div class="col-lg-8">
+
+        <div class="d-flex align-items-center gap-3 mb-4">
+
+            <a href="{{ url_for('agendamentos') }}"
+               class="btn btn-outline-secondary rounded-circle">
+
+                <i class="bi bi-arrow-left"></i>
+
+            </a>
+
+            <div>
+                <h3 class="page-title mb-1">
+                    Alterar Agendamento
+                </h3>
+
+                <p class="text-muted mb-0">
+                    Atualize os dados do atendimento.
+                </p>
+            </div>
+
+        </div>
+
+        <div class="card custom-card">
+
+            <div class="card-header card-header-gradient py-4">
+
+                <h5 class="text-white mb-1">
+                    <i class="bi bi-calendar-event me-2"></i>
+                    Editar Atendimento
+                </h5>
+
+                <small class="text-white-50">
+                    Agendamento #{{ agendamento.id }}
+                </small>
+
+            </div>
+
+            <div class="card-body p-4">
+
+                <div class="info-box">
+                    <strong>Cliente:</strong>
+                    {{ agendamento.cliente.nome }}
+                </div>
+
+                <form method="POST"
+                      action="{{ url_for('editarAgendamento', id=agendamento.id) }}">
+
+                    <div class="mb-4">
+
+                        <label class="form-label fw-semibold">
+                            Data e Horário
+                        </label>
+
+                        <input
+                            type="datetime-local"
+                            name="dataHora"
+                            class="form-control"
+                            value="{{ agendamento.data.strftime('%Y-%m-%dT%H:%M') }}"
+                            required
+                        >
+
+                    </div>
+
+                    <div class="mb-4">
+
+                        <label class="form-label fw-semibold mb-3">
+                            Serviços
+                        </label>
+
+                        {% set servicos_atuais = agendamento.servicos | map(attribute='id') | list %}
+
+                        {% for servico in todos_servicos %}
+
+                        <div class="service-box">
+
+                            <div class="form-check">
+
+                                <input
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    name="servicos"
+                                    value="{{ servico.id }}"
+                                    id="servico_{{ servico.id }}"
+                                    {% if servico.id in servicos_atuais %}checked{% endif %}
+                                >
+
+                                <label
+                                    class="form-check-label ms-2"
+                                    for="servico_{{ servico.id }}"
+                                >
+
+                                    <strong>
+                                        {{ servico.nome }}
+                                    </strong>
+
+                                    <br>
+
+                                    <small class="text-muted">
+                                        R$ {{ "%.2f"|format(servico.preco) }}
+                                    </small>
+
+                                </label>
+
+                            </div>
+
+                        </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                    {% if current_user.is_admin %}
+
+                    <div class="mb-4">
+
+                        <label class="form-label fw-semibold">
+                            Status
+                        </label>
+
+                        <select
+                            name="estado"
+                            class="form-select">
+
+                            {% for estado in estados %}
+
+                            <option
+                                value="{{ estado.name }}"
+                                {% if agendamento.estado == estado %}selected{% endif %}
+                            >
+                                {{ estado.value|capitalize }}
+                            </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+                    {% endif %}
+
+                    <div class="d-grid gap-2">
+
+                        <button
+                            type="submit"
+                            class="btn btn-rosa btn-lg btn-action">
+
+                            <i class="bi bi-check-circle me-2"></i>
+                            Salvar Alterações
+
+                        </button>
+
+                        <a
+                            href="{{ url_for('agendamentos') }}"
+                            class="btn btn-outline-secondary btn-action">
+
+                            Cancelar
+
+                        </a>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+```

@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% block title %}Agendamento #{{ agendamento.pk }}{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-2 sidebar py-3">
+      <div class="text-center mb-4">
+        <div style="font-size:2.5rem"></div>
+        <div class="fw-bold" style="color:#e91e8c">Cabeleira Leila</div>
+        <div class="small text-muted">Painel de Gestão</div>
+      </div>
+      <nav class="nav flex-column">
+        <a class="nav-link" href="{% url 'painel_operacional' %}"><i class="bi bi-speedometer2"></i> Painel Geral</a>
+        <a class="nav-link active" href="{% url 'listar_agendamentos' %}"><i class="bi bi-calendar3"></i> Agendamentos</a>
+        <a class="nav-link" href="{% url 'painel_gerencial' %}"><i class="bi bi-bar-chart-line"></i> Gerencial</a>
+        <hr>
+        <a class="nav-link text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Sair</a>
+      </nav>
+    </div>
+
+    <div class="col-md-10 py-3">
+      <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{% url 'listar_agendamentos' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+        <h3 class="fw-bold mb-0" style="color:#e91e8c">Agendamento #{{ agendamento.pk }}</h3>
+        <span class="badge badge-{{ agendamento.status }} fs-6">{{ agendamento.get_status_display }}</span>
+      </div>
+
+      <div class="row g-4">
+        <!-- Dados do agendamento -->
+        <div class="col-md-5">
+          <div class="card shadow mb-4">
+            <div class="card-header py-3" style="background:linear-gradient(135deg,#c0166e,#e91e8c)">
+              <h6 class="text-white mb-0 fw-semibold"><i class="bi bi-person-circle"></i> Cliente</h6>
+            </div>
+            <div class="card-body">
+              <div class="fw-bold fs-5">{{ agendamento.cliente.get_full_name|default:agendamento.cliente.username }}</div>
+              <div class="text-muted">@{{ agendamento.cliente.username }}</div>
+              {% if agendamento.cliente.email %}<div class="mt-2"><i class="bi bi-envelope"></i> {{ agendamento.cliente.email }}</div>{% endif %}
+              {% if agendamento.cliente.perfil.telefone %}
+              <div><i class="bi bi-telephone"></i> {{ agendamento.cliente.perfil.telefone }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="card shadow mb-4">
+            <div class="card-header py-3" style="background:#f8f0fb">
+              <h6 class="mb-0 fw-semibold" style="color:#c0166e"><i class="bi bi-calendar-event"></i> Informações</h6>
+            </div>
+            <div class="card-body">
+              <div class="row g-2">
+                <div class="col-6">
+                  <div class="text-muted small">Data</div>
+                  <div class="fw-semibold">{{ agendamento.data_hora|date:"d/m/Y" }}</div>
+                </div>
+                <div class="col-6">
+                  <div class="text-muted small">Horário</div>
+                  <div class="fw-semibold">{{ agendamento.data_hora|time:"H:i" }}</div>
+                </div>
+                <div class="col-6">
+                  <div class="text-muted small">Criado em</div>
+                  <div class="small">{{ agendamento.criado_em|date:"d/m/Y H:i" }}</div>
+                </div>
+                <div class="col-6">
+                  <div class="text-muted small">Atualizado</div>
+                  <div class="small">{{ agendamento.atualizado_em|date:"d/m/Y H:i" }}</div>
+                </div>
+                {% if agendamento.observacoes %}
+                <div class="col-12 mt-2">
+                  <div class="text-muted small">Observações</div>
+                  <div class="border rounded p-2 bg-light small">{{ agendamento.observacoes }}</div>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Ações -->
+          <div class="d-flex flex-column gap-2">
+            {% if agendamento.status == 'pendente' %}
+            <form method="post" action="{% url 'confirmar_agendamento' agendamento.pk %}">
+              {% csrf_token %}
+              <button class="btn btn-success w-100"><i class="bi bi-check-circle"></i> Confirmar Agendamento</button>
+            </form>
+            {% endif %}
+            <a href="{% url 'alterar_agendamento_staff' agendamento.pk %}" class="btn btn-warning">
+              <i class="bi bi-pencil"></i> Alterar Agendamento
+            </a>
+          </div>
+        </div>
+
+        <!-- Serviços e status -->
+        <div class="col-md-7">
+          <div class="card shadow">
+            <div class="card-header py-3" style="background:linear-gradient(135deg,#c0166e,#e91e8c)">
+              <h6 class="text-white mb-0 fw-semibold"><i class="bi bi-scissors"></i> Gerenciar Serviços</h6>
+            </div>
+            <div class="card-body p-0">
+              {% for item in agendamento.itens.all %}
+              <div class="p-4 border-bottom">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                  <div>
+                    <div class="fw-bold fs-6">{{ item.servico.nome }}</div>
+                    <div class="text-muted small">{{ item.servico.duracao_minutos }} min · R$ {{ item.servico.preco }}</div>
+                  </div>
+                  <span class="badge
+                    {% if item.status == 'aguardando' %}bg-secondary
+                    {% elif item.status == 'em_andamento' %}bg-info
+                    {% elif item.status == 'concluido' %}bg-success
+                    {% else %}bg-danger{% endif %}">
+                    {{ item.get_status_display }}
+                  </span>
+                </div>
+                <form method="post" action="{% url 'alterar_status_item' item.pk %}" class="row g-2">
+                  {% csrf_token %}
+                  <div class="col-md-5">
+                    <select name="status" class="form-select form-select-sm">
+                      {% for val, label in item.STATUS_SERVICO %}
+                      <option value="{{ val }}" {% if item.status == val %}selected{% endif %}>{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-5">
+                    <input type="text" name="observacao" value="{{ item.observacao }}" class="form-control form-control-sm" placeholder="Observação...">
+                  </div>
+                  <div class="col-md-2">
+                    <button class="btn btn-rosa btn-sm w-100"><i class="bi bi-check"></i></button>
+                  </div>
+                </form>
+              </div>
+              {% endfor %}
+              <div class="px-4 py-3 d-flex justify-content-between fw-bold">
+                <span>Total</span>
+                <span style="color:#e91e8c">R$ {{ agendamento.total }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

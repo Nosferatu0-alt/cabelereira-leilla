@@ -1,0 +1,113 @@
+```html
+{% extends 'base.html' %}
+{% block content %}
+
+<style>
+    .login-card{
+        max-width: 500px;
+        margin: 80px auto;
+        border: none;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,.08);
+    }
+
+    .login-header{
+        background: linear-gradient(135deg,#c0166e,#e91e8c);
+        color: white;
+        border-radius: 20px 20px 0 0;
+    }
+
+    .btn-rosa{
+        background: #e91e8c;
+        border: none;
+        color: white;
+    }
+
+    .btn-rosa:hover{
+        background: #c0166e;
+        color: white;
+    }
+</style>
+
+<div class="container">
+
+    <div class="card login-card">
+
+        <div class="card-header login-header text-center py-4">
+            <h3 class="mb-1">
+                Cabeleira Leila
+            </h3>
+            <small>
+                Faça login para continuar
+            </small>
+        </div>
+
+        <div class="card-body p-4">
+
+            <form method="post">
+
+                <div class="mb-3">
+                    <label for="email" class="form-label fw-semibold">
+                        Email
+                    </label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        class="form-control"
+                        placeholder="Digite seu email"
+                        required
+                    >
+                </div>
+
+                <div class="mb-4">
+                    <label for="senha" class="form-label fw-semibold">
+                        Senha
+                    </label>
+
+                    <input
+                        type="password"
+                        id="senha"
+                        name="senha"
+                        class="form-control"
+                        placeholder="Digite sua senha"
+                        required
+                    >
+                </div>
+
+                <button
+                    type="submit"
+                    class="btn btn-rosa w-100 py-2"
+                >
+                    Entrar
+                </button>
+
+            </form>
+
+            <hr>
+
+            <div class="text-center">
+                <small class="text-muted">
+                    Ainda não possui uma conta?
+                </small>
+
+                <br>
+
+                <a
+                    href="{{ url_for('cadastro') }}"
+                    class="text-decoration-none"
+                    style="color:#e91e8c;"
+                >
+                    Criar conta
+                </a>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+```

@@ -1,0 +1,406 @@
+{% extends 'base.html' %}
+{% block title %}Painel Gerencial{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<style>
+:root{
+    --rosa:#e91e8c;
+    --rosa-dark:#c0166e;
+    --dourado:#c9a84c;
+    --bg:#f7f8fc;
+}
+
+body{
+    background: var(--bg);
+}
+
+.sidebar{
+    min-height:100vh;
+    background:#fff;
+    border-right:1px solid #ececec;
+}
+
+.sidebar .nav-link{
+    color:#555;
+    padding:12px 16px;
+    border-radius:12px;
+    margin-bottom:6px;
+    transition:.2s;
+}
+
+.sidebar .nav-link:hover{
+    background:#fff0f7;
+    color:var(--rosa);
+}
+
+.sidebar .nav-link.active{
+    background:linear-gradient(135deg,var(--rosa-dark),var(--rosa));
+    color:#fff;
+}
+
+.card-custom{
+    border:none;
+    border-radius:20px;
+    box-shadow:0 8px 25px rgba(0,0,0,.06);
+}
+
+.kpi-card{
+    border:none;
+    border-radius:20px;
+    transition:.2s;
+}
+
+.kpi-card:hover{
+    transform:translateY(-4px);
+}
+
+.kpi-icon{
+    width:60px;
+    height:60px;
+    border-radius:16px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:auto;
+    font-size:1.5rem;
+}
+
+.icon-rosa{background:#fce4f3;color:var(--rosa);}
+.icon-verde{background:#eaf8ee;color:#28a745;}
+.icon-vermelho{background:#fdeaea;color:#dc3545;}
+.icon-dourado{background:#fff7e6;color:var(--dourado);}
+
+.semana-card{
+    background:#fdf5fa;
+    border-radius:16px;
+    padding:20px;
+    text-align:center;
+}
+
+.semana-atual{
+    background:linear-gradient(135deg,#fce4f3,#f8d0ec);
+    border:2px solid var(--rosa);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+
+        <!-- SIDEBAR -->
+        <div class="col-md-2 sidebar py-4">
+
+            <div class="text-center mb-5">
+                <h4 class="fw-bold mb-1" style="color:#e91e8c">
+                    Cabeleira Leila
+                </h4>
+                <small class="text-muted">
+                    Painel de Gestão
+                </small>
+            </div>
+
+            <nav class="nav flex-column">
+                <a class="nav-link" href="{% url 'painel_operacional' %}">
+                    <i class="bi bi-speedometer2 me-2"></i>
+                    Painel Geral
+                </a>
+
+                <a class="nav-link" href="{% url 'listar_agendamentos' %}">
+                    <i class="bi bi-calendar3 me-2"></i>
+                    Agendamentos
+                </a>
+
+                <a class="nav-link active" href="{% url 'painel_gerencial' %}">
+                    <i class="bi bi-bar-chart-line me-2"></i>
+                    Gerencial
+                </a>
+
+                <hr>
+
+                <a class="nav-link text-danger" href="{% url 'logout' %}">
+                    <i class="bi bi-box-arrow-right me-2"></i>
+                    Sair
+                </a>
+            </nav>
+
+        </div>
+
+        <!-- CONTEÚDO -->
+        <div class="col-md-10 py-4">
+
+            <div class="mb-4">
+                <h3 class="fw-bold" style="color:#e91e8c">
+                    <i class="bi bi-bar-chart-line me-2"></i>
+                    Painel Gerencial
+                </h3>
+
+                <small class="text-muted">
+                    Semana:
+                    {{ inicio_semana|date:"d/m" }}
+                    a
+                    {{ fim_semana|date:"d/m/Y" }}
+                </small>
+            </div>
+
+            <!-- KPIs -->
+            <div class="row g-4 mb-4">
+
+                <div class="col-md-3 col-6">
+                    <div class="card card-custom kpi-card">
+                        <div class="card-body text-center">
+
+                            <div class="kpi-icon icon-rosa">
+                                <i class="bi bi-calendar-week"></i>
+                            </div>
+
+                            <h2 class="fw-bold mt-3">
+                                {{ total_semana }}
+                            </h2>
+
+                            <small class="text-muted">
+                                Total na Semana
+                            </small>
+
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3 col-6">
+                    <div class="card card-custom kpi-card">
+                        <div class="card-body text-center">
+
+                            <div class="kpi-icon icon-verde">
+                                <i class="bi bi-check-circle"></i>
+                            </div>
+
+                            <h2 class="fw-bold mt-3">
+                                {{ concluidos_semana }}
+                            </h2>
+
+                            <small class="text-muted">
+                                Concluídos
+                            </small>
+
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3 col-6">
+                    <div class="card card-custom kpi-card">
+                        <div class="card-body text-center">
+
+                            <div class="kpi-icon icon-vermelho">
+                                <i class="bi bi-x-circle"></i>
+                            </div>
+
+                            <h2 class="fw-bold mt-3">
+                                {{ cancelados_semana }}
+                            </h2>
+
+                            <small class="text-muted">
+                                Cancelados
+                            </small>
+
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3 col-6">
+                    <div class="card card-custom kpi-card">
+                        <div class="card-body text-center">
+
+                            <div class="kpi-icon icon-dourado">
+                                <i class="bi bi-cash-stack"></i>
+                            </div>
+
+                            <h2 class="fw-bold mt-3">
+                                R$ {{ faturamento }}
+                            </h2>
+
+                            <small class="text-muted">
+                                Faturamento
+                            </small>
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="row g-4">
+
+                <!-- GRÁFICO -->
+                <div class="col-lg-8">
+                    <div class="card card-custom h-100">
+
+                        <div class="card-header text-white"
+                             style="background:linear-gradient(135deg,#c0166e,#e91e8c)">
+                            Agendamentos por Dia
+                        </div>
+
+                        <div class="card-body">
+                            <canvas id="graficoSemana" height="260"></canvas>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- SERVIÇOS -->
+                <div class="col-lg-4">
+                    <div class="card card-custom h-100">
+
+                        <div class="card-header text-white"
+                             style="background:linear-gradient(135deg,#c0166e,#e91e8c)">
+                            Serviços Populares
+                        </div>
+
+                        <div class="card-body">
+
+                            {% if servicos_populares %}
+
+                                {% for s in servicos_populares %}
+                                <div class="mb-3">
+
+                                    <div class="d-flex justify-content-between">
+                                        <small class="fw-semibold">
+                                            {{ s.servico__nome }}
+                                        </small>
+
+                                        <span class="badge"
+                                              style="background:#fce4f3;color:#e91e8c">
+                                            {{ s.total }}x
+                                        </span>
+                                    </div>
+
+                                    <div class="progress mt-2" style="height:6px;">
+                                        <div class="progress-bar"
+                                             style="width:{{ s.total|floatformat:0 }}0%; background:#e91e8c;">
+                                        </div>
+                                    </div>
+
+                                </div>
+                                {% endfor %}
+
+                            {% else %}
+
+                                <div class="text-center py-5 text-muted">
+                                    Nenhum serviço concluído.
+                                </div>
+
+                            {% endif %}
+
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- HISTÓRICO -->
+                <div class="col-12">
+
+                    <div class="card card-custom">
+
+                        <div class="card-header"
+                             style="background:#f8f0fb;color:#c0166e;">
+                            Comparativo - Últimas Semanas
+                        </div>
+
+                        <div class="card-body">
+
+                            <div class="row g-3">
+
+                                {% for semana in historico_semanas %}
+                                <div class="col-md-3">
+                                    <div class="semana-card">
+
+                                        <div class="text-muted small">
+                                            {{ semana.semana }}
+                                        </div>
+
+                                        <div class="fs-2 fw-bold mt-2"
+                                             style="color:#e91e8c">
+                                            {{ semana.total }}
+                                        </div>
+
+                                        <small class="text-muted">
+                                            agendamentos
+                                        </small>
+
+                                    </div>
+                                </div>
+                                {% endfor %}
+
+                                <div class="col-md-3">
+                                    <div class="semana-card semana-atual">
+
+                                        <div class="text-muted small">
+                                            Semana Atual
+                                        </div>
+
+                                        <div class="fs-2 fw-bold mt-2"
+                                             style="color:#e91e8c">
+                                            {{ total_semana }}
+                                        </div>
+
+                                        <small class="text-muted">
+                                            agendamentos
+                                        </small>
+
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const ctx = document.getElementById('graficoSemana').getContext('2d');
+
+const dias = {{ dias_semana_json|safe }};
+const totais = {{ totais_json|safe }};
+
+new Chart(ctx,{
+    type:'bar',
+    data:{
+        labels:dias,
+        datasets:[{
+            data:totais,
+            backgroundColor:'rgba(233,30,140,.3)',
+            borderColor:'#e91e8c',
+            borderWidth:2,
+            borderRadius:8
+        }]
+    },
+    options:{
+        responsive:true,
+        plugins:{
+            legend:{
+                display:false
+            }
+        },
+        scales:{
+            y:{
+                beginAtZero:true,
+                ticks:{
+                    stepSize:1
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

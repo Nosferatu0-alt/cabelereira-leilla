@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% block title %}Painel Operacional{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <!-- Sidebar -->
+    <div class="col-md-2 sidebar py-3">
+      <div class="text-center mb-4">
+        <div style="font-size:2.5rem">✂</div>
+        <div class="fw-bold" style="color:#e91e8c">Cabeleira Leila</div>
+        <div class="small text-muted">Painel de Gestão</div>
+      </div>
+      <nav class="nav flex-column">
+        <a class="nav-link active" href="{% url 'painel_operacional' %}">
+          <i class="bi bi-speedometer2"></i> Painel Geral
+        </a>
+        <a class="nav-link" href="{% url 'listar_agendamentos' %}">
+          <i class="bi bi-calendar3"></i> Agendamentos
+        </a>
+        <a class="nav-link" href="{% url 'painel_gerencial' %}">
+          <i class="bi bi-bar-chart-line"></i> Gerencial
+        </a>
+        <hr>
+        <a class="nav-link text-danger" href="{% url 'logout' %}">
+          <i class="bi bi-box-arrow-right"></i> Sair
+        </a>
+      </nav>
+    </div>
+
+    <!-- Conteúdo -->
+    <div class="col-md-10 py-3">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h3 class="fw-bold mb-0" style="color:#e91e8c"><i class="bi bi-speedometer2"></i> Painel Operacional</h3>
+          <p class="text-muted mb-0 small">{{ hoje|date:"l, d \d\e F \d\e Y" }}</p>
+        </div>
+        <a href="{% url 'listar_agendamentos' %}" class="btn btn-rosa">
+          <i class="bi bi-calendar3"></i> Ver Todos
+        </a>
+      </div>
+
+      <!-- Cards de resumo -->
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+          <div class="card stat-card h-100">
+            <div class="card-body">
+              <div class="stat-icon"><i class="bi bi-calendar-day"></i></div>
+              <div class="fs-3 fw-bold mt-2">{{ agendamentos_hoje.count }}</div>
+              <div class="text-muted small">Agendamentos Hoje</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card h-100" style="border-left:4px solid #ffc107">
+            <div class="card-body">
+              <div style="font-size:2rem; color:#ffc107"><i class="bi bi-hourglass-split"></i></div>
+              <div class="fs-3 fw-bold mt-2">{{ pendentes }}</div>
+              <div class="text-muted small">Aguardando Confirmação</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card h-100" style="border-left:4px solid #28a745">
+            <div class="card-body">
+              <div style="font-size:2rem; color:#28a745"><i class="bi bi-check-circle"></i></div>
+              <div class="fs-3 fw-bold mt-2">
+                {{ agendamentos_hoje|length }}
+              </div>
+              <div class="text-muted small">No horário de hoje</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card h-100" style="border-left:4px solid #17a2b8">
+            <div class="card-body">
+              <div style="font-size:2rem; color:#17a2b8"><i class="bi bi-scissors"></i></div>
+              <div class="fs-3 fw-bold mt-2">
+                {% for ag in agendamentos_hoje %}{% if ag.status == 'em_andamento' %}1{% endif %}{% endfor %}
+              </div>
+              <div class="text-muted small">Em Atendimento</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de hoje -->
+      <div class="card shadow">
+        <div class="card-header d-flex justify-content-between align-items-center py-3" style="background:linear-gradient(135deg,#c0166e,#e91e8c)">
+          <h6 class="text-white mb-0 fw-semibold"><i class="bi bi-calendar-day"></i> Agenda de Hoje</h6>
+          <span class="badge bg-light text-dark">{{ hoje|date:"d/m/Y" }}</span>
+        </div>
+        <div class="card-body p-0">
+          {% if agendamentos_hoje %}
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead style="background:#fdf5fa">
+                <tr>
+                  <th>Horário</th>
+                  <th>Cliente</th>
+                  <th>Serviços</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for ag in agendamentos_hoje %}
+                <tr>
+                  <td class="fw-semibold">{{ ag.data_hora|time:"H:i" }}</td>
+                  <td>
+                    <div class="fw-semibold">{{ ag.cliente.get_full_name|default:ag.cliente.username }}</div>
+                    {% if ag.cliente.perfil.telefone %}
+                    <div class="text-muted small"><i class="bi bi-telephone"></i> {{ ag.cliente.perfil.telefone }}</div>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% for item in ag.itens.all %}
+                    <span class="badge bg-light text-dark border me-1">{{ item.servico.nome }}</span>
+                    {% endfor %}
+                  </td>
+                  <td><span class="badge badge-{{ ag.status }}">{{ ag.get_status_display }}</span></td>
+                  <td>
+                    <a href="{% url 'detalhe_agendamento_staff' ag.pk %}" class="btn btn-sm btn-outline-secondary">
+                      <i class="bi bi-eye"></i>
+                    </a>
+                    {% if ag.status == 'pendente' %}
+                    <form method="post" action="{% url 'confirmar_agendamento' ag.pk %}" class="d-inline">
+                      {% csrf_token %}
+                      <button class="btn btn-sm btn-success"><i class="bi bi-check"></i></button>
+                    </form>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="text-center py-5 text-muted">
+            <i class="bi bi-calendar-x fs-1 d-block mb-3" style="color:#e91e8c; opacity:.4"></i>
+            <p>Nenhum agendamento para hoje.</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

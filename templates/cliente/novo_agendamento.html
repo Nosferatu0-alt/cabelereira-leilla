@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Novo Agendamento{% endblock %}
+
+{% block content %}
+
+<style>
+    .page-title{ color:#c0166e; font-weight:700; }
+    .custom-card{ border:none; border-radius:24px; overflow:hidden; box-shadow:0 12px 30px rgba(0,0,0,.08); }
+    .card-header-gradient{ background:linear-gradient(135deg,#c0166e,#e91e8c); }
+    .service-box{ background:#fdf5fa; border:1px solid #f1d7e5; border-radius:15px; padding:12px 16px; margin-bottom:12px; transition:.2s; }
+    .service-box:hover{ background:#fff; border-color:#e91e8c; }
+    .btn-action{ border-radius:12px; padding:12px; font-weight:600; }
+    .form-control, .form-select{ border-radius:12px; padding:12px; }
+</style>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+
+        <div class="d-flex align-items-center gap-3 mb-4">
+            <a href="{{ url_for('home') }}" class="btn btn-outline-secondary rounded-circle">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div>
+                <h3 class="page-title mb-1">Novo Agendamento</h3>
+                <p class="text-muted mb-0">Escolha a data e os serviços desejados.</p>
+            </div>
+        </div>
+
+        <div class="card custom-card">
+
+            <div class="card-header card-header-gradient py-4">
+                <h5 class="text-white mb-0">
+                    <i class="bi bi-calendar-plus me-2"></i>Agendar Atendimento
+                </h5>
+                <small class="text-white-50">Preencha as informações abaixo.</small>
+            </div>
+
+            <div class="card-body p-4">
+
+                <form method="POST" action="{{ url_for('agendamentos') }}">
+
+                    {% if current_user.is_admin %}
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Cliente</label>
+                        <select name="cliente" class="form-select" required>
+                            <option value="">Selecione um cliente</option>
+                            {% for cliente in clientes %}
+                            <option value="{{ cliente.id }}">{{ cliente.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Data e Horário</label>
+                        <input type="datetime-local"
+                               name="dataHora"
+                               class="form-control"
+                               required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold mb-3">Serviços</label>
+                        {% for servico in servicos %}
+                        <div class="service-box">
+                            <div class="form-check">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       name="servicos"
+                                       value="{{ servico.id }}"
+                                       id="servico_{{ servico.id }}">
+                                <label class="form-check-label ms-2"
+                                       for="servico_{{ servico.id }}">
+                                    {{ servico.nome }} — R$ {{ "%.2f"|format(servico.preco) }}
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <button type="submit" class="btn btn-rosa btn-lg w-100 btn-action">
+                        <i class="bi bi-check-circle me-2"></i>Confirmar Agendamento
+                    </button>
+
+                </form>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

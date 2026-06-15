@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block title %}Histórico{% endblock %}
+
+{% block content %}
+
+<style>
+    .page-header{
+        background: linear-gradient(135deg,#c0166e,#e91e8c);
+        border-radius: 22px;
+        padding: 30px;
+        color: white;
+        margin-bottom: 30px;
+        box-shadow: 0 12px 30px rgba(233,30,140,.25);
+    }
+    .custom-card{ border:none; border-radius:22px; box-shadow:0 10px 30px rgba(0,0,0,.08); }
+    .agendamento-card{ transition:.25s; border-left:5px solid #e91e8c; }
+    .agendamento-card:hover{ background:#fff5fa; transform:translateX(4px); }
+    .filter-card{ border:none; border-radius:20px; box-shadow:0 8px 25px rgba(0,0,0,.06); }
+    .info-label{ font-size:.85rem; color:#888; }
+    .valor-total{ color:#e91e8c; font-size:1.2rem; font-weight:700; }
+    .empty-icon{ font-size:5rem; color:#e91e8c; opacity:.25; }
+</style>
+
+<div class="container">
+
+    <div class="page-header d-flex align-items-center gap-3 flex-wrap">
+        <a href="{{ url_for('home') }}" class="btn btn-light rounded-circle">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+            <h2 class="fw-bold mb-1">Histórico de Agendamentos</h2>
+            <p class="mb-0 opacity-75">Consulte todos os seus atendimentos anteriores.</p>
+        </div>
+    </div>
+
+    <!-- Filtro por status -->
+    <div class="card filter-card mb-4">
+        <div class="card-body p-4">
+            <form method="GET" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Data Inicial</label>
+                    <input type="date" name="data_inicio" class="form-control"
+                           value="{{ request.args.get('data_inicio', '') }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Data Final</label>
+                    <input type="date" name="data_fim" class="form-control"
+                           value="{{ request.args.get('data_fim', '') }}">
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-rosa w-100">
+                        <i class="bi bi-search me-2"></i>Filtrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista -->
+    <div class="card custom-card">
+        <div class="card-header bg-white py-3 border-0">
+            <h5 class="mb-0 fw-semibold" style="color:#c0166e;">
+                <i class="bi bi-clock-history me-2"></i>Meus Agendamentos
+            </h5>
+        </div>
+
+        <div class="card-body p-0">
+
+            {% if agendamentos %}
+                <div class="list-group list-group-flush">
+                    {% for ag in agendamentos %}
+                    <a href="{{ url_for('editarAgendamento', id=ag.id) }}"
+                       class="list-group-item list-group-item-action p-4 agendamento-card">
+
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h6 class="fw-bold mb-2">
+                                    {{ ag.data.strftime('%d/%m/%Y às %H:%M') }}
+                                </h6>
+                                <div class="text-muted small mb-2">
+                                    {% for servico in ag.servicos %}
+                                        {{ servico.nome }}{% if not loop.last %}, {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                                <span class="badge rounded-pill px-3 py-2
+                                    {% if ag.estado.value == 'pendente' %}bg-warning text-dark
+                                    {% elif ag.estado.value == 'finalizado' %}bg-success
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ ag.estado.value|capitalize }}
+                                </span>
+                            </div>
+                        </div>
+
+                    </a>
+                    {% endfor %}
+                </div>
+
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-calendar-x empty-icon"></i>
+                    <h5 class="mt-3">Nenhum agendamento encontrado</h5>
+                    <p class="text-muted">Você ainda não possui agendamentos.</p>
+                    <a href="{{ url_for('agendamentos') }}" class="btn btn-rosa mt-2">
+                        Fazer Novo Agendamento
+                    </a>
+                </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

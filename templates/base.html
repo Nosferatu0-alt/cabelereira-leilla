@@ -1,0 +1,236 @@
+```html
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Cabeleira Leila{% endblock %} - Salão de Beleza</title>
+
+    <link
+        href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css"
+        rel="stylesheet">
+
+    <link
+        href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css"
+        rel="stylesheet">
+
+    <style>
+        :root{
+            --rosa:#e91e8c;
+            --rosa-claro:#fce4f3;
+            --rosa-escuro:#c0166e;
+            --dourado:#c9a84c;
+        }
+
+        body{
+            background:#fdf5fa;
+            font-family:'Segoe UI',sans-serif;
+            min-height:100vh;
+            display:flex;
+            flex-direction:column;
+        }
+
+        .navbar{
+            background:linear-gradient(
+                135deg,
+                var(--rosa-escuro),
+                var(--rosa)
+            ) !important;
+            box-shadow:0 4px 15px rgba(0,0,0,.08);
+        }
+
+        .navbar-brand,
+        .navbar-nav .nav-link{
+            color:white !important;
+        }
+
+        .navbar-brand{
+            font-weight:700;
+        }
+
+        .navbar-brand span{
+            color:var(--dourado);
+        }
+
+        .navbar-nav .nav-link{
+            border-radius:10px;
+            padding:.5rem .9rem;
+            transition:.2s;
+        }
+
+        .navbar-nav .nav-link:hover{
+            background:rgba(255,255,255,.15);
+        }
+
+        main{
+            flex:1;
+        }
+
+        .card{
+            border:none;
+            border-radius:18px;
+            box-shadow:0 3px 18px rgba(233,30,140,.08);
+        }
+
+        .btn-rosa{
+            background:var(--rosa);
+            color:white;
+            border:none;
+        }
+
+        .btn-rosa:hover{
+            background:var(--rosa-escuro);
+            color:white;
+        }
+
+        footer{
+            background:var(--rosa-escuro);
+            color:white;
+            padding:1rem;
+        }
+    </style>
+
+    {% block extra_head %}
+    {% endblock %}
+</head>
+
+<body>
+
+{% if current_user.is_authenticated %}
+<nav class="navbar navbar-expand-lg">
+
+    <div class="container">
+
+        <a class="navbar-brand"
+           href="{{ url_for('home') }}">
+            Cabel<span>Ei</span>La
+        </a>
+
+        <button
+            class="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navMenu">
+
+            <span class="navbar-toggler-icon"></span>
+
+        </button>
+
+        <div class="collapse navbar-collapse" id="navMenu">
+
+            <ul class="navbar-nav ms-auto">
+
+                {% if current_user.is_admin %}
+
+                    <li class="nav-item">
+                        <a class="nav-link"
+                           href="{{ url_for('home') }}">
+                            <i class="bi bi-speedometer2"></i>
+                            Painel
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link"
+                           href="{{ url_for('agendamentos') }}">
+                            <i class="bi bi-calendar3"></i>
+                            Agendamentos
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link"
+                           href="{{ url_for('servicos') }}">
+                            <i class="bi bi-scissors"></i>
+                            Serviços
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link"
+                           href="{{ url_for('cadastroCliente') }}">
+                            <i class="bi bi-people"></i>
+                            Clientes
+                        </a>
+                    </li>
+
+                {% else %}
+
+                    <li class="nav-item">
+                        <a class="nav-link"
+                           href="{{ url_for('home') }}">
+                            <i class="bi bi-house"></i>
+                            Início
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link"
+                           href="{{ url_for('agendamentos') }}">
+                            <i class="bi bi-calendar-plus"></i>
+                            Agendar
+                        </a>
+                    </li>
+
+                {% endif %}
+
+                <li class="nav-item">
+                    <a class="nav-link"
+                       href="{{ url_for('logout') }}">
+                        <i class="bi bi-box-arrow-right"></i>
+                        Sair
+                    </a>
+                </li>
+
+            </ul>
+
+        </div>
+
+    </div>
+
+</nav>
+{% endif %}
+
+<main class="container py-4">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+
+            {% for category, message in messages %}
+
+                <div class="alert alert-{{ category }} alert-dismissible fade show">
+
+                    {{ message }}
+
+                    <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="alert">
+                    </button>
+
+                </div>
+
+            {% endfor %}
+
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}
+    {% endblock %}
+
+</main>
+
+<footer class="text-center">
+    <small>
+        © 2026 Cabeleira Leila Salão de Beleza
+    </small>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+
+{% block extra_js %}
+{% endblock %}
+
+</body>
+</html>
+```
