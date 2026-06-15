@@ -1,28 +1,23 @@
 from collections import defaultdict
-# ↑ um tipo especial de array que preenche nulls
-from flask import Flask, url_for, render_template, request, redirect, url_for
-# ↑ importação do flask e ferramentas para redirecionamento
+from flask import Flask, url_for, render_template, request, redirect, abort
 from db import db
 from models import Cliente, Agendamentos, Servico, Estado
-# ↑ banco de dados
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-# ↑ bibliotecas para login
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# configurando o app
 app = Flask(__name__)
 app.secret_key = "m04H4H4"
 lm = LoginManager(app)
-lm.login_view = 'login' # se entrar em area em que login_required, vai pra login
+lm.login_view = 'login'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///cabeleleila.db'
 db.init_app(app)
 
 
-@lm.user_loader # decorador para carregar user
-def load_user(id): # pega o id para carregar user
-    cliente = db.session.query(Cliente).filter_by(id=id).first()
-    return cliente
+@lm.user_loader
+def load_user(id):
+    return db.session.query(Cliente).filter_by(id=id).first()
+
 @app.route('/')
 def home():
     if not current_user.is_authenticated:
@@ -32,17 +27,10 @@ def home():
                                semanas_com_multiplos={})
 
     if current_user.is_admin:
-        agendamentos = (Agendamentos.query
-                        .filter(Agendamentos.estado != Estado.cancelado)
-                        .order_by(Agendamentos.data.asc())
-                        .all())
-        agendamentos_cancelados = (Agendamentos.query
-                                   .filter(Agendamentos.estado == Estado.cancelado)
-                                   .order_by(Agendamentos.data.desc())
-                                   .all())
+        agendamentos = Agendamentos.query.order_by(Agendamentos.data.asc()).all()
         return render_template('cliente/dashboard.html',
                                agendamentos_proximos=agendamentos,
-                               agendamentos_cancelados=agendamentos_cancelados,
+                               agendamentos_cancelados=[],
                                semanas_com_multiplos={})
 
     agendamentos = (Agendamentos.query
@@ -64,13 +52,13 @@ def home():
                             .all())
 
     agendamentos_por_semana = defaultdict(list)
-    for agendamento in agendamentosPendente:
-        ano, semana, _ = agendamento.data.isocalendar()
+    for ag in agendamentosPendente:
+        ano, semana, _ = ag.data.isocalendar()
         agendamentos_por_semana[(ano, semana)].append({
-            'id': agendamento.id,
-            'data': agendamento.data,
-            'dia_semana': agendamento.data.strftime('%A'),
-            'servicos': agendamento.servicos
+            'id': ag.id,
+            'data': ag.data,
+            'dia_semana': ag.data.strftime('%A'),
+            'servicos': ag.servicos
         })
 
     semanas_com_multiplos = {
@@ -91,32 +79,192 @@ def login():
         email = request.form['email']
         senha = request.form['senha']
         cliente = db.session.query(Cliente).filter_by(email=email).first()
-        if cliente and check_password_hash(cliente.senha, senha):
-            login_user(cliente)
-            return redirect(url_for('home'))
-        else:
-            return "Email ou senha invalidos"
+        if not cliente or not check_password_hash(cliente.senha, senha):
+            return "Email ou senha inválidos", 401
+        login_user(cliente)
+        return redirect(url_for('home'))
     return render_template('cliente/login.html')
+
 
 @app.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
     if request.method == 'POST':
-        nome = request.form['nome']
-        email = request.form['email']
-        telefone = request.form['telefone']
-        senha = request.form['senha']
-        novoCliente = Cliente(nome=nome, email=email, telefone=telefone, senha=generate_password_hash(senha))
+        novoCliente = Cliente(
+            nome=request.form['nome'],
+            email=request.form['email'],
+            telefone=request.form['telefone'],
+            senha=generate_password_hash(request.form['senha'])
+        )
         db.session.add(novoCliente)
         db.session.commit()
         login_user(novoCliente)
-        return redirect(url_for('home'))  # ← dentro do if POST
+        return redirect(url_for('home'))
     return render_template('gerencial/cadastroCliente.html')
+
 
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('home'))
+
+
+@app.route('/agendamentos', methods=['GET', 'POST'])
+@login_required
+def agendamentos():
+    if request.method == 'POST':
+        dataHora = datetime.strptime(request.form.get('dataHora'), '%Y-%m-%dT%H:%M')
+        servicos_ids = request.form.getlist('servicos')
+
+        if dataHora < datetime.now() or not servicos_ids:
+            return "Não é possível marcar uma data passada ou sem serviço selecionado!", 400
+
+        if current_user.is_admin:
+            clienteInput = request.form.get('cliente')
+            cliente = Cliente.query.get_or_404(clienteInput)
+            novoAgendamento = Agendamentos(clienteId=cliente.id, data=dataHora, is_confirmed=True)
+        else:
+            novoAgendamento = Agendamentos(clienteId=current_user.id, data=dataHora)
+
+        for servico_id in servicos_ids:
+            servico = Servico.query.get(servico_id)
+            if servico:
+                novoAgendamento.servicos.append(servico)
+
+        db.session.add(novoAgendamento)
+        db.session.commit()
+        return redirect(url_for('home'))
+
+    todosClientes = Cliente.query.filter_by(is_admin=False).all()
+    todosServicos = Servico.query.all()
+    return render_template('cliente/novo_agendamento.html',
+                           servicos=todosServicos,
+                           clientes=todosClientes)
+
+
+@app.route('/editarAgendamento/<int:id>', methods=['GET', 'POST'])
+@login_required
+def editarAgendamento(id):
+    agendamento = Agendamentos.query.get_or_404(id)
+    todosServicos = Servico.query.all()
+
+    if not current_user.is_admin:
+        distancia = (agendamento.data - datetime.now()).days
+        if abs(distancia) < 2:
+            return ("Infelizmente, edições só podem ser feitas até dois dias antes do agendamento. "
+                    "Ligue para a Leila em 55555555 para alterações."), 403
+
+    if request.method == 'POST':
+        nova_data = datetime.strptime(request.form.get('dataHora'), '%Y-%m-%dT%H:%M')
+        novoServicos_ids = request.form.getlist('servicos')
+
+        if nova_data < datetime.now() or not novoServicos_ids:
+            return "Não é possível marcar uma data passada ou sem serviço selecionado!", 400
+
+        agendamento.data = nova_data
+        agendamento.estado = Estado[request.form.get('estado')]
+
+        idsAtuais = {s.id for s in agendamento.servicos}
+        novos_ids = set(map(int, novoServicos_ids))
+
+        for servico_id in idsAtuais - novos_ids:
+            servico = Servico.query.get(servico_id)
+            if servico:
+                agendamento.servicos.remove(servico)
+
+        for servico_id in novos_ids - idsAtuais:
+            servico = Servico.query.get(servico_id)
+            if servico:
+                agendamento.servicos.append(servico)
+
+        try:
+            db.session.commit()
+            return redirect(url_for('home'))
+        except Exception as e:
+            db.session.rollback()
+            return f"Erro ao salvar: {e}", 500
+
+    return render_template('cliente/alterar_agendamento.html',
+                           agendamento=agendamento,
+                           servicos=todosServicos,
+                           estados=Estado,
+                           todos_servicos=todosServicos)
+
+
+@app.route('/cancelarAgendamento/<int:id>')
+@login_required
+def cancelarAgendamento(id):
+    agendamento = Agendamentos.query.get_or_404(id)
+
+    if not current_user.is_admin:
+        distancia = (agendamento.data - datetime.now()).days
+        if abs(distancia) < 2:
+            return ("Infelizmente, cancelamentos só podem ser feitos até dois dias antes do agendamento. "
+                    "Ligue para a Leila em 55555555 para alterações."), 403
+
+    agendamento.estado = Estado.cancelado
+    db.session.commit()
+    return redirect(url_for('home'))
+
+
+@app.route('/confirmarAgendamento/<int:id>')
+@login_required
+def confirmarAgendamento(id):
+    if not current_user.is_admin:
+        abort(403)
+    agendamento = Agendamentos.query.get_or_404(id)
+    agendamento.is_confirmed = True
+    db.session.commit()
+    return redirect(url_for('home'))
+
+
+@app.route('/excluirAgendamento/<int:id>')
+@login_required
+def excluirAgendamento(id):
+    if not current_user.is_admin:
+        abort(403)
+    agendamento = Agendamentos.query.get_or_404(id)
+    db.session.delete(agendamento)
+    db.session.commit()
+    return redirect(url_for('home'))
+
+
+@app.route('/unirAgendamentos/<int:id1>/<int:id2>', methods=['POST'])
+@login_required
+def unirAgendamentos(id1, id2):
+    agendamento1 = Agendamentos.query.get_or_404(id1)
+    agendamento2 = Agendamentos.query.get_or_404(id2)
+
+    dias_semana = {
+        "Monday": 2, "Tuesday": 3, "Wednesday": 4,
+        "Thursday": 5, "Friday": 6, "Saturday": 7, "Sunday": 1
+    }
+
+    dia1 = request.form.get('dia1')
+    dia2 = request.form.get('dia2')
+
+    if dias_semana[dia1] < dias_semana[dia2]:
+        mais_recente, mais_antigo = agendamento1, agendamento2
+    else:
+        mais_recente, mais_antigo = agendamento2, agendamento1
+
+    agendamentoUnico = Agendamentos(clienteId=current_user.id, data=mais_recente.data)
+
+    for servico in mais_recente.servicos + mais_antigo.servicos:
+        if servico not in agendamentoUnico.servicos:
+            agendamentoUnico.servicos.append(servico)
+
+    mais_recente.estado = Estado.cancelado
+    mais_antigo.estado = Estado.cancelado
+
+    try:
+        db.session.add(agendamentoUnico)
+        db.session.commit()
+        return redirect(url_for('home'))
+    except Exception as e:
+        db.session.rollback()
+        return f"Erro ao unir agendamentos: {e}", 500
+
 
 @app.route('/historico')
 @login_required
@@ -132,239 +280,133 @@ def historico():
         query = query.filter(Agendamentos.data <= datetime.strptime(data_fim, '%Y-%m-%d').replace(hour=23, minute=59))
 
     agendamentos = query.order_by(Agendamentos.data.desc()).all()
-
     return render_template('cliente/historico.html', agendamentos=agendamentos)
 
 
-@app.route('/agendamentos', methods=['GET', 'POST'])
+@app.route('/desempenho')
 @login_required
-def agendamentos():
-    if request.method == 'POST':
-        dataHora = datetime.strptime(request.form.get('dataHora'), '%Y-%m-%dT%H:%M')
-        servicos_ids = request.form.getlist('servicos')
-
-        if dataHora < datetime.now() or servicos_ids == []:
-            return "Não é possivel marcar uma data passada ou deixar de escolher um serviço!"
-
-        if current_user.is_admin:
-            clienteInput = request.form.get('cliente')
-            cliente = Cliente.query.get(clienteInput)
-            novoAgendamento = Agendamentos(
-                clienteId=cliente.id,
-                data=dataHora,
-                is_confirmed=True,
-            )
-        else:
-            novoAgendamento = Agendamentos(
-                clienteId=current_user.id,
-                data=dataHora
-            )
-        
-        for servico_id in servicos_ids:
-            servico = Servico.query.get(servico_id)
-            novoAgendamento.servicos.append(servico)
-    
-        db.session.add(novoAgendamento)
-        db.session.commit()
-        return redirect(url_for('home'))
-
-    todosClientes = Cliente.query.filter_by(is_admin=False).all()
-    todosServicos = Servico.query.all()
-    return render_template('cliente/novo_agendamento.html', servicos=todosServicos, clientes=todosClientes)
-
-
-@app.route('/editarAgendamento/<int:id>', methods=['GET', 'POST'])
-@login_required
-def editarAgendamento(id):
-    agendamento = Agendamentos.query.get_or_404(id)
-    todosServicos = Servico.query.all()
-
+def desempenho():
     if not current_user.is_admin:
-        dataAgendado = agendamento.data
-        dataHoje = datetime.now()
-        distancia = (dataAgendado - dataHoje).days
-        if abs(distancia) < 2:
-            return "Infelizmente, edições só podem ser feitas até dois dias antes do agendamento. Ligue para a Leila em 55555555 para alterações."
+        abort(403)
 
-    if request.method == 'POST':
-        agendamento.data = datetime.strptime(request.form.get('dataHora'), '%Y-%m-%dT%H:%M')
-        novo_estado = request.form.get('estado')
-        agendamento.estado = Estado[novo_estado]
-        novoServicos_ids = request.form.getlist('servicos')
+    hoje = datetime.now()
+    semanas = []
+    for i in range(3, -1, -1):
+        inicio = hoje - timedelta(weeks=i, days=hoje.weekday())
+        inicio = inicio.replace(hour=0, minute=0, second=0, microsecond=0)
+        fim = inicio + timedelta(days=6, hours=23, minutes=59)
+        semanas.append((inicio, fim))
 
-        if agendamento.data < datetime.now() or novoServicos_ids == []:
-            return "Não é possivel marcar uma data passada ou deixar de escolher um serviço!"
-        else:
-            idsAtuais = {s.id for s in agendamento.servicos}
-            novos_ids = set(map(int, novoServicos_ids))
-            
-            para_remover = idsAtuais - novos_ids
-            for servico_id in para_remover:
-                servico = Servico.query.get(servico_id)
-                if servico:
-                    agendamento.servicos.remove(servico)
+    dados_semanas = []
+    for inicio, fim in semanas:
+        ags = Agendamentos.query.filter(
+            Agendamentos.data >= inicio,
+            Agendamentos.data <= fim,
+            Agendamentos.estado != Estado.cancelado
+        ).all()
 
-            para_adicionar = novos_ids - idsAtuais
-            for servico_id in para_adicionar:
-                servico = Servico.query.get(servico_id)
-                if servico:
-                    agendamento.servicos.append(servico)
+        total_servicos = sum(len(ag.servicos) for ag in ags)
+        receita = sum(s.preco for ag in ags for s in ag.servicos)
+        confirmados = sum(1 for ag in ags if ag.is_confirmed)
+
+        dados_semanas.append({
+            'periodo': f"{inicio.strftime('%d/%m')} – {fim.strftime('%d/%m')}",
+            'agendamentos': len(ags),
+            'servicos': total_servicos,
+            'receita': receita,
+            'confirmados': confirmados,
+        })
+
+    return render_template('gerencial/desempenho.html', semanas=dados_semanas)
+
+
+@app.route('/listarAgendamentos')
+@login_required
+def listarAgendamentos():
+    if not current_user.is_admin:
+        abort(403)
+
+    estado_filtro = request.args.get('estado')
+    query = Agendamentos.query
+
+    if estado_filtro:
         try:
-            db.session.commit()
-            return redirect(url_for('home'))
-        except Exception as e:
-            return "Erro"
+            query = query.filter(Agendamentos.estado == Estado[estado_filtro])
+        except KeyError:
+            pass
 
-    servicos = Servico.query.all()
-    return render_template('cliente/alterar_agendamento.html', agendamento=agendamento, servicos=servicos, estados=Estado, todos_servicos=todosServicos)
+    agendamentos = query.order_by(Agendamentos.data.asc()).all()
+    return render_template('gerencial/listar_agendamentos.html',
+                           agendamentos=agendamentos,
+                           estados=Estado,
+                           estado_filtro=estado_filtro)
 
-@app.route('/cancelarAgendamento/<int:id>', methods=['GET'])
-@login_required
-def cancelarAgendamento(id):
-    if current_user.is_admin:
-        agendamento = Agendamentos.query.get_or_404(id)
-        agendamento.estado = Estado.cancelado
-    else:
-        agendamento = Agendamentos.query.get_or_404(id)
-        dataAgendado = agendamento.data
-        dataHoje = datetime.now()
-        distancia = (dataAgendado - dataHoje).days
-        if abs(distancia) < 2:
-            return "Infelizmente, cancelamentos só podem ser feitos até dois dias antes do agendamento. Ligue para a Leila em 55555555 para alterações."
-        else:
-            agendamento.estado = Estado.cancelado
-    db.session.commit()
-    return redirect(url_for('home'))
 
-@app.route('/unirAgendamentos/<int:id1>/<int:id2>', methods=['POST'])
-@login_required
-def unirAgendamentos(id1, id2):
-    agendamento1 = Agendamentos.query.get_or_404(id1)
-    agendamento2 = Agendamentos.query.get_or_404(id2)
-
-    dia1 = request.form.get('dia1')
-    dia2 = request.form.get('dia2')
-
-    dias_semana = {
-        "Monday": 2,
-        "Tuesday": 3,
-        "Wednesday": 4,
-        "Thursday": 5,
-        "Friday": 6,
-        "Saturday": 7,
-        "Sunday": 1
-    }
-
-    if dias_semana[dia1] < dias_semana[dia2]:
-        mais_recente = agendamento1
-        mais_antigo = agendamento2
-    else:
-        mais_recente = agendamento2
-        mais_antigo = agendamento1
-
-    agendamentoUnico = Agendamentos(
-        clienteId=current_user.id,
-        data=mais_recente.data,
-    )
-    uniao = mais_recente.servicos + mais_antigo.servicos
-    for servico in uniao:
-        if servico not in agendamentoUnico.servicos:
-            agendamentoUnico.servicos.append(servico)
-
-    mais_recente.estado = Estado.cancelado
-    mais_antigo.estado = Estado.cancelado
-
-    try:
-        db.session.add(agendamentoUnico)
-        db.session.commit()
-        return redirect(url_for('home'))
-    except Exception as e:
-        db.session.rollback()
-        return "Erro ao unir agendamentos: " + str(e)
-
-@app.route('/confirmarAgendamento/<int:id>', methods=['GET'])
-@login_required
-def confirmarAgendamento(id):
-    if current_user.is_admin:
-        agendamento = Agendamentos.query.get_or_404(id)
-        agendamento.is_confirmed = True
-        db.session.commit()
-        return redirect(url_for('home'))
-    else:
-        return "Não administrador"
-
-@app.route('/excluirAgendamento/<int:id>', methods=['GET'])
-@login_required
-def excluirAgendamento(id):
-    if current_user.is_admin:
-        agendamento = Agendamentos.query.get_or_404(id)
-        db.session.delete(agendamento)
-        db.session.commit()
-        return redirect(url_for('home'))
-    else:
-        return "Você não tem permissão para visualizar essa página"
 @app.route('/servicos', methods=['GET', 'POST'])
 @login_required
 def servicos():
+    if not current_user.is_admin:
+        abort(403)
+
     if request.method == 'POST':
-        nome = request.form['nome']
-        preco = request.form['preco']
-        descricao = request.form['descricao']
-        novo_servico = Servico(nome=nome, preco=preco, descricao=descricao)
+        novo_servico = Servico(
+            nome=request.form['nome'],
+            preco=request.form['preco'],
+            descricao=request.form['descricao']
+        )
         db.session.add(novo_servico)
         db.session.commit()
         return redirect(url_for('servicos'))
+
     todos_servicos = Servico.query.all()
     return render_template('gerencial/cadastroServico.html', servicos=todos_servicos)
-@app.route('/cadastroCliente', methods=['POST', 'GET'])
+
+
+@app.route('/cadastroCliente', methods=['GET', 'POST'])
 @login_required
 def cadastroCliente():
-    if current_user.is_admin:
-        if request.method == 'POST':
-            nome = request.form['nome']
-            email = request.form['email']
-            telefone = request.form['telefone']
-            senha = request.form['senha']
-            novo_cliente = Cliente(nome=nome, email=email, telefone=telefone, senha=generate_password_hash(senha))
-            db.session.add(novo_cliente)
-            db.session.commit()
-            return redirect(url_for('home'))
-        return render_template('gerencial/cadastroCliente.html')
-    else:
-        return "Você não tem permissão para acessar esta página."
+    if not current_user.is_admin:
+        abort(403)
+
+    if request.method == 'POST':
+        novo_cliente = Cliente(
+            nome=request.form['nome'],
+            email=request.form['email'],
+            telefone=request.form['telefone'],
+            senha=generate_password_hash(request.form['senha'])
+        )
+        db.session.add(novo_cliente)
+        db.session.commit()
+        return redirect(url_for('home'))
+
+    return render_template('gerencial/cadastroCliente.html')
 
 
 def inicializar_dados():
     db.create_all()
 
-    # Criar administrador padrão, se não existir
     admin_email = "cabelereiraLeila@adm.com"
-    admin = Cliente.query.filter_by(email=admin_email).first()
-    if not admin:
-        admin = Cliente(
+    if not Cliente.query.filter_by(email=admin_email).first():
+        db.session.add(Cliente(
             nome="Administrador",
             email=admin_email,
             telefone="000000000",
             senha=generate_password_hash("admin123"),
             is_admin=True
-        )
-        db.session.add(admin)
-        db.session.commit()
+        ))
 
-    # Criar serviços padrão, se não existirem
     servicos_padrao = [
         {"nome": "Corte de Cabelo", "preco": 50.0, "descricao": "Corte profissional de cabelo."},
-        {"nome": "Manicure", "preco": 30.0, "descricao": "Manicure completa."},
-        {"nome": "Pedicure", "preco": 40.0, "descricao": "Pedicure completa."},
-        {"nome": "Escova", "preco": 60.0, "descricao": "Escova modeladora."},
+        {"nome": "Manicure",        "preco": 30.0, "descricao": "Manicure completa."},
+        {"nome": "Pedicure",        "preco": 40.0, "descricao": "Pedicure completa."},
+        {"nome": "Escova",          "preco": 60.0, "descricao": "Escova modeladora."},
         {"nome": "Design de Sobrancelhas", "preco": 20.0, "descricao": "Design profissional de sobrancelhas."},
-        {"nome": "Maquiagem", "preco": 80.0, "descricao": "Maquiagem completa para eventos."}
+        {"nome": "Maquiagem",       "preco": 80.0, "descricao": "Maquiagem completa para eventos."},
     ]
-    for servico_data in servicos_padrao:
-        servico = Servico.query.filter_by(nome=servico_data["nome"]).first()
-        if not servico:
-            servico = Servico(**servico_data)
-            db.session.add(servico)
+    for dados in servicos_padrao:
+        if not Servico.query.filter_by(nome=dados["nome"]).first():
+            db.session.add(Servico(**dados))
+
     db.session.commit()
 
 
