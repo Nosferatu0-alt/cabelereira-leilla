@@ -25,37 +25,65 @@ def load_user(id): # pega o id para carregar user
     return cliente
 @app.route('/')
 def home():
-    if current_user.is_authenticated:
-        if current_user.is_admin:
-            agendamentos = Agendamentos.query.order_by(Agendamentos.data.asc()).all()  # ← adicione .all()
-            return render_template('cliente/dashboard.html',
-                                   agendamentos_proximos=agendamentos,
-                                   semanas_com_multiplos={})
-        else:
-            agendamentos = Agendamentos.query.filter_by(clienteId=current_user.id).order_by(Agendamentos.data.asc()).all()
-            agendamentosPendente = Agendamentos.query.filter(
-                Agendamentos.clienteId == current_user.id,
-                Agendamentos.estado == Estado.pendente
-            ).order_by(Agendamentos.data.asc()).all()
+    if not current_user.is_authenticated:
+        return render_template('cliente/dashboard.html',
+                               agendamentos_proximos=[],
+                               agendamentos_cancelados=[],
+                               semanas_com_multiplos={})
 
-            agendamentos_por_semana = defaultdict(list)
-            for agendamento in agendamentosPendente:
-                ano, semana, _ = agendamento.data.isocalendar()
-                agendamentos_por_semana[(ano, semana)].append({
-                    'id': agendamento.id,
-                    'data': agendamento.data,
-                    'dia_semana': agendamento.data.strftime('%A'),
-                    'servicos': agendamento.servicos
-                })
+    if current_user.is_admin:
+        agendamentos = (Agendamentos.query
+                        .filter(Agendamentos.estado != Estado.cancelado)
+                        .order_by(Agendamentos.data.asc())
+                        .all())
+        agendamentos_cancelados = (Agendamentos.query
+                                   .filter(Agendamentos.estado == Estado.cancelado)
+                                   .order_by(Agendamentos.data.desc())
+                                   .all())
+        return render_template('cliente/dashboard.html',
+                               agendamentos_proximos=agendamentos,
+                               agendamentos_cancelados=agendamentos_cancelados,
+                               semanas_com_multiplos={})
 
-            semanas_com_multiplos = {semana: ags for semana, ags in agendamentos_por_semana.items() if len(ags) > 1}
-            return render_template('cliente/dashboard.html',
-                                   agendamentos_proximos=agendamentos,
-                                   semanas_com_multiplos=semanas_com_multiplos)
+    agendamentos = (Agendamentos.query
+                    .filter(Agendamentos.clienteId == current_user.id,
+                            Agendamentos.estado != Estado.cancelado)
+                    .order_by(Agendamentos.data.asc())
+                    .all())
+
+    agendamentos_cancelados = (Agendamentos.query
+                               .filter(Agendamentos.clienteId == current_user.id,
+                                       Agendamentos.estado == Estado.cancelado)
+                               .order_by(Agendamentos.data.desc())
+                               .all())
+
+    agendamentosPendente = (Agendamentos.query
+                            .filter(Agendamentos.clienteId == current_user.id,
+                                    Agendamentos.estado == Estado.pendente)
+                            .order_by(Agendamentos.data.asc())
+                            .all())
+
+    agendamentos_por_semana = defaultdict(list)
+    for agendamento in agendamentosPendente:
+        ano, semana, _ = agendamento.data.isocalendar()
+        agendamentos_por_semana[(ano, semana)].append({
+            'id': agendamento.id,
+            'data': agendamento.data,
+            'dia_semana': agendamento.data.strftime('%A'),
+            'servicos': agendamento.servicos
+        })
+
+    semanas_com_multiplos = {
+        semana: ags
+        for semana, ags in agendamentos_por_semana.items()
+        if len(ags) > 1
+    }
 
     return render_template('cliente/dashboard.html',
-                           agendamentos_proximos=[],
-                           semanas_com_multiplos={})
+                           agendamentos_proximos=agendamentos,
+                           agendamentos_cancelados=agendamentos_cancelados,
+                           semanas_com_multiplos=semanas_com_multiplos)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
